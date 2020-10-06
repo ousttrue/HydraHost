@@ -1,0 +1,25 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "buidl usd[debug]",
+            "type": "shell",
+            "command": "${config:python.pythonPath}",
+            "args": [
+                "build_scripts/build_usd.py",
+                "--debug",
+                "--build-monolithic",
+                "--no-tests",
+                "--no-examples",
+                "--no-tutorials",
+                "--no-docs",
+                "--no-python",
+                "--usd-imaging",
+                "${workspaceFolder}/build/debug"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}
