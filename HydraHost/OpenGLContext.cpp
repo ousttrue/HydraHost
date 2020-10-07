@@ -1,6 +1,13 @@
 #include "OpenGLContext.h"
+#include <gl/glew.h>
 #include <GL/GL.h>
 #include "GL/wglext.h"
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_opengl3.h>
+
+// GL 3.0 + GLSL 130
+const char *glsl_version = "#version 130";
 
 ///
 /// OpenGLContext
@@ -75,13 +82,13 @@ public:
         return true;
     }
 
-    void Render()
+    void Begin()
     {
         wglMakeCurrent(_hDC, _hGLRC);
+    }
 
-        glClearColor(0.2f, 0.2f, 0.6f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    void End()
+    {
         glFinish();
         SwapBuffers(_hDC);
     }
@@ -97,15 +104,64 @@ OpenGLContext::OpenGLContext()
 
 OpenGLContext::~OpenGLContext()
 {
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+
     delete _impl;
 }
 
 bool OpenGLContext::Initialize(HWND hwnd)
 {
-    return _impl->Initialize(hwnd);
+    if (!_impl->Initialize(hwnd))
+    {
+        return false;
+    }
+
+    auto err = glewInit();
+    if (err != GLEW_OK)
+    {
+        return false;
+    }
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    (void)io;
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsClassic();
+
+    // Setup Platform/Renderer bindings
+    ImGui_ImplWin32_Init(hwnd);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    return true;
 }
 
 void OpenGLContext::Render()
 {
-    _impl->Render();
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+    static bool show_demo_window = true;
+    ImGui::ShowDemoWindow(&show_demo_window);
+
+    // Rendering
+    ImGui::Render();
+    ImGuiIO &io = ImGui::GetIO();
+
+    _impl->Begin();
+    {
+        glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+        glClearColor(0.2f, 0.2f, 0.6f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    }
+    _impl->End();
 }
