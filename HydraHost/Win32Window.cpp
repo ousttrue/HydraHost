@@ -1,5 +1,6 @@
 #include "Win32Window.h"
 #include "OpenGLContext.h"
+#include "Gui.h"
 #include <Windows.h>
 #include <Windowsx.h>
 #include <assert.h>
@@ -13,6 +14,8 @@ class Win32WindowImpl
 {
 public:
     HWND _hwnd = NULL;
+    int _width = -1;
+    int _height = -1;
     int _xPos = -1;
     int _yPos = -1;
     bool _mouseLeft = false;
@@ -61,11 +64,17 @@ private:
             PostQuitMessage(0);
             return 0;
 
+        case WM_SIZE:
+            _width = LOWORD(lParam);
+            _height = HIWORD(lParam);
+            return 0;
         case WM_LBUTTONDOWN:
             _mouseLeft = true;
+            SetCapture(_hwnd);
             return 0;
         case WM_LBUTTONUP:
             _mouseLeft = false;
+            ReleaseCapture();
             return 0;
         case WM_MOUSEMOVE:
             _xPos = GET_X_LPARAM(lParam);
@@ -133,6 +142,8 @@ int Win32Window::MainLoop()
         return 2;
     }
 
+    Gui gui(_impl->_hwnd);
+
     MSG msg;
     while (true)
     {
@@ -155,7 +166,9 @@ int Win32Window::MainLoop()
         state.MouseMiddle = _impl->_mouseMiddle;
 
         // rendering
-        opengl.Render(state);
+        opengl.Begin(_impl->_width, _impl->_height);
+        gui.Render(state);
+        opengl.End();
 
         // keep FPS
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
