@@ -45,6 +45,8 @@ import sys
 import sysconfig
 import tarfile
 import zipfile
+import pathlib
+HERE = pathlib.Path(__file__).absolute().parent
 
 if sys.version_info.major >= 3:
     from urllib.request import urlopen
@@ -112,6 +114,7 @@ def GetXcodeDeveloperDirectory():
 
     return GetCommandOutput("xcode-select -p")
 
+
 def GetVisualStudioCompilerAndVersion():
     """Returns a tuple containing the path to the Visual Studio compiler
     and a tuple for its version, e.g. (14, 0). If the compiler is not found
@@ -119,15 +122,13 @@ def GetVisualStudioCompilerAndVersion():
     if not Windows():
         return None
 
-    msvcCompiler = find_executable('cl')
+    vs = GetVisualStudioLatest()
+
+    msvcCompiler = vs.compiler
     if msvcCompiler:
         # VisualStudioVersion environment variable should be set by the
         # Visual Studio Command Prompt.
-        match = re.search(
-            r"(\d+)\.(\d+)",
-            os.environ.get("VisualStudioVersion", ""))
-        if match:
-            return (msvcCompiler, tuple(int(v) for v in match.groups()))
+        return (msvcCompiler, vs.version)
     return None
 
 def IsVisualStudioVersionOrGreater(desiredVersion):
@@ -363,7 +364,7 @@ def RunCMake(context, force, extraArgs = None):
     config=("Debug" if context.buildDebug else "Release")
 
     with CurrentWorkingDirectory(buildDir):
-        Run('cmake '
+        Run(f'"{GetCMake()}" '
             '-DCMAKE_INSTALL_PREFIX="{instDir}" '
             '-DCMAKE_PREFIX_PATH="{depsInstDir}" '
             '-DCMAKE_BUILD_TYPE={config} '
@@ -378,9 +379,7 @@ def RunCMake(context, force, extraArgs = None):
                     osx_rpath=(osx_rpath or ""),
                     generator=(generator or ""),
                     extraArgs=(" ".join(extraArgs) if extraArgs else "")))
-        Run("cmake --build . --config {config} --target install -- {multiproc}"
-            .format(config=config,
-                    multiproc=FormatMultiProcs(context.numJobs, generator)))
+        Run(f'"{GetCMake()}" --build . --config {config} --target install -- {FormatMultiProcs(context.numJobs, generator)}')
 
 def GetCMakeVersion():
     """
@@ -389,7 +388,8 @@ def GetCMakeVersion():
     parsing its output.
     """
 
-    output_string = GetCommandOutput("cmake --version")
+    cmake = GetCMake()
+    output_string = GetCommandOutput(f'"{cmake}" --version')
     if not output_string:
         PrintWarning("Could not determine cmake version -- please install it "
                      "and adjust your PATH")
@@ -1739,8 +1739,7 @@ args = parser.parse_args()
 class InstallContext:
     def __init__(self, args):
         # Assume the USD source directory is in the parent directory
-        self.usdSrcDir = os.path.normpath(
-            os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))
+        self.usdSrcDir = os.path.normpath(HERE.parent / '_external/USD')
 
         # Directory where USD will be installed
         self.usdInstDir = os.path.abspath(args.install_dir)
@@ -1861,6 +1860,42 @@ except Exception as e:
 
 verbosity = args.verbosity
 
+
+# get vswhere
+VSWHERE = HERE / 'vswhere.exe'
+class VisualStudio:
+    def __init__(self, values):
+        self.version = ([int(v) for v in values['installationVersion'].split('.')][0], 0)
+        self.path = pathlib.Path(values['installationPath'])
+        clversion = (self.path / 'VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt').read_text().strip()
+        self.compiler = self.path / 'VC\\Tools\\MSVC\\{clversion}\\bin\\HostX64\\x64\\cl.exe'
+        self.cmake = self.path / 'Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe'
+
+
+def GetVisualStudioLatest():
+    cp = subprocess.run(f'{VSWHERE} -latest -products * -requires Microsoft.VisualStudio.Component.VC.CMake.Project', encoding='utf-8', stdout=subprocess.PIPE)
+    values = {}
+    for l in cp.stdout.splitlines():
+        if l and ':' in l:
+            k, v = l.split(':', 1)
+            values[k.strip()] = v.strip()
+    return VisualStudio(values)
+
+def GetCMake():
+    if Windows():
+        vs = GetVisualStudioLatest()
+        return vs.cmake
+    else:
+        return find_executable('cmake')
+
+if Windows():
+    if not VSWHERE.exists():
+        # download
+        print('download vswhere')
+        VSWHERE_URL = 'https://github.com/microsoft/vswhere/releases/download/2.8.4/vswhere.exe'
+        DownloadFileWithPowershell(VSWHERE_URL, str(VSWHERE))
+
+
 # Augment PATH on Windows so that 3rd-party dependencies can find libraries
 # they depend on. In particular, this is needed for building IlmBase/OpenEXR.
 extraPaths = []
@@ -1973,21 +2008,12 @@ if find_executable("python"):
                    "PATH")
         sys.exit(1)
 
-    # Error out on Windows with Python 3.8+. USD currently does not support
-    # these versions due to:
-    # https://docs.python.org/3.8/whatsnew/3.8.html#bpo-36085-whatsnew
-    isPython38 = (sys.version_info.major >= 3 and
-                  sys.version_info.minor >= 8)
-    if Windows() and isPython38:
-        PrintError("Python 3.8+ is not supported on Windows")
-        sys.exit(1)
-
 else:
     PrintError("python not found -- please ensure python is included in your "
                "PATH")
     sys.exit(1)
 
-if find_executable("cmake"):
+if GetCMake():
     # Check cmake requirements
     if Windows():
         # Windows build depend on boost 1.70, which is not supported before
