@@ -1,6 +1,7 @@
 #include "Win32Window.h"
 #include "OpenGLContext.h"
 #include <Windows.h>
+#include <Windowsx.h>
 #include <assert.h>
 #include <thread>
 #include <chrono>
@@ -10,10 +11,13 @@
 ///
 class Win32WindowImpl
 {
-    HWND _hwnd = NULL;
-
 public:
-    HWND GetHWND() const { return _hwnd; }
+    HWND _hwnd = NULL;
+    int _xPos = -1;
+    int _yPos = -1;
+    bool _mouseLeft = false;
+    bool _mouseRight = false;
+    bool _mouseMiddle = false;
 
     static LRESULT CALLBACK WindowProc(
         _In_ HWND hwnd,
@@ -55,6 +59,17 @@ private:
         {
         case WM_DESTROY:
             PostQuitMessage(0);
+            return 0;
+
+        case WM_LBUTTONDOWN:
+            _mouseLeft = true;
+            return 0;
+        case WM_LBUTTONUP:
+            _mouseLeft = false;
+            return 0;
+        case WM_MOUSEMOVE:
+            _xPos = GET_X_LPARAM(lParam);
+            _yPos = GET_Y_LPARAM(lParam);
             return 0;
         }
         return DefWindowProc(_hwnd, uMsg, wParam, lParam);
@@ -113,7 +128,7 @@ std::shared_ptr<Win32Window> Win32Window::Create(std::string_view title, int wid
 int Win32Window::MainLoop()
 {
     OpenGLContext opengl;
-    if (!opengl.Initialize(_impl->GetHWND()))
+    if (!opengl.Initialize(_impl->_hwnd))
     {
         return 2;
     }
@@ -131,8 +146,16 @@ int Win32Window::MainLoop()
             DispatchMessage(&msg);
         }
 
+        // imgui
+        WindowState state;
+        state.MouseX = _impl->_xPos;
+        state.MouseY = _impl->_yPos;
+        state.MouseLeft = _impl->_mouseLeft;
+        state.MouseRight = _impl->_mouseRight;
+        state.MouseMiddle = _impl->_mouseMiddle;
+
         // rendering
-        opengl.Render();
+        opengl.Render(state);
 
         // keep FPS
         std::this_thread::sleep_for(std::chrono::milliseconds(30));

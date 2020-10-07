@@ -143,7 +143,7 @@ bool OpenGLContext::Initialize(HWND hwnd)
     return true;
 }
 
-void OpenGLContext::Render()
+void OpenGLContext::Render(const WindowState &state)
 {
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
@@ -155,6 +155,11 @@ void OpenGLContext::Render()
     // Rendering
     ImGui::Render();
     ImGuiIO &io = ImGui::GetIO();
+    io.MouseDown[0] = state.MouseLeft;
+    io.MouseDown[1] = state.MouseRight;
+    io.MouseDown[2] = state.MouseMiddle;
+    io.MousePos.x = state.MouseX;
+    io.MousePos.y = state.MouseY;
 
     _impl->Begin();
     {
