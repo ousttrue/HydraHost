@@ -1,12 +1,20 @@
 #include "Win32Window.h"
+#include "OpenGLContext.h"
 #include <Windows.h>
 #include <assert.h>
+#include <thread>
+#include <chrono>
 
+///
+/// Win32WindowImpl
+///
 class Win32WindowImpl
 {
     HWND _hwnd = NULL;
 
 public:
+    HWND GetHWND() const { return _hwnd; }
+
     static LRESULT CALLBACK WindowProc(
         _In_ HWND hwnd,
         _In_ UINT uMsg,
@@ -53,6 +61,9 @@ private:
     }
 };
 
+///
+/// Win32Window
+///
 Win32Window::Win32Window(Win32WindowImpl *impl)
     : _impl(impl)
 {
@@ -101,11 +112,32 @@ std::shared_ptr<Win32Window> Win32Window::Create(std::string_view title, int wid
 
 int Win32Window::MainLoop()
 {
-    MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0) > 0)
+    OpenGLContext opengl;
+    if (!opengl.Initialize(_impl->GetHWND()))
     {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        return 2;
     }
-    return (int)msg.wParam;
+
+    MSG msg;
+    while (true)
+    {
+        // process event
+        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                return (int)msg.wParam;
+            }
+            DispatchMessage(&msg);
+        }
+
+        // rendering
+        opengl.Render();
+
+        // keep FPS
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    }
+
+    // not reach here
+    return -1;
 }
