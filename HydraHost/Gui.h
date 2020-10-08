@@ -9,5 +9,6 @@ class Gui
 public:
     Gui(HWND hWnd);
     ~Gui();
-    void Render(const WindowState &state);
+    bool ProcessInput(const WindowState &state);
+    void Render();
 };

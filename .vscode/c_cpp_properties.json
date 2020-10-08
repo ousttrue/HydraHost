@@ -3,7 +3,8 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/build/debug/include/**"
+                "${workspaceFolder}/build/debug/include/**",
+                "${workspaceFolder}/HydraHost/**",
             ],
             "defines": [
                 "_DEBUG",

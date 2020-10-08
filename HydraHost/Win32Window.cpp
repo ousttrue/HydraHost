@@ -14,6 +14,7 @@ public:
     int _height = -1;
     int _xPos = -1;
     int _yPos = -1;
+    int _wheel = 0;
     bool _mouseLeft = false;
     bool _mouseRight = false;
     bool _mouseMiddle = false;
@@ -65,6 +66,7 @@ private:
             _width = LOWORD(lParam);
             _height = HIWORD(lParam);
             return 0;
+
         case WM_LBUTTONDOWN:
             _mouseLeft = true;
             SetCapture(_hwnd);
@@ -73,11 +75,35 @@ private:
             _mouseLeft = false;
             ReleaseCapture();
             return 0;
+
+        case WM_RBUTTONDOWN:
+            _mouseRight = true;
+            SetCapture(_hwnd);
+            return 0;
+        case WM_RBUTTONUP:
+            _mouseRight = false;
+            ReleaseCapture();
+            return 0;
+
+        case WM_MBUTTONDOWN:
+            _mouseMiddle = true;
+            SetCapture(_hwnd);
+            return 0;
+        case WM_MBUTTONUP:
+            _mouseMiddle = false;
+            ReleaseCapture();
+            return 0;
+
         case WM_MOUSEMOVE:
             _xPos = GET_X_LPARAM(lParam);
             _yPos = GET_Y_LPARAM(lParam);
             return 0;
+
+        case WM_MOUSEWHEEL:
+            _wheel = GET_WHEEL_DELTA_WPARAM(wParam);
+            return 0;
         }
+
         return DefWindowProc(_hwnd, uMsg, wParam, lParam);
     }
 };
@@ -159,6 +185,9 @@ bool Win32Window::ProcessEvent(WindowState *state, int *exitCode)
         state->MouseLeft = _impl->_mouseLeft;
         state->MouseRight = _impl->_mouseRight;
         state->MouseMiddle = _impl->_mouseMiddle;
+        state->Wheel = _impl->_wheel;
+        // consume wheel
+        _impl->_wheel = 0;
     }
 
     return true;
