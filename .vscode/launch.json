@@ -8,11 +8,18 @@
             "name": "HydraHost",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/build/debug/bin/HydraHost.exe",
-            "args": [],
+            "program": "${workspaceFolder}/build/debug/bin/HydraHost.exe",
+            "args": [
+                "${workspaceFolder}/assets/sphere.usda",
+            ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "environment": [],
+            "environment": [
+                {
+                    "name": "PATH",
+                    "value": "${env:PATH};${workspaceFolder}\\build\\debug\\bin;${workspaceFolder}\\build\\debug\\lib"
+                }
+            ],
             "externalConsole": false
         },
         {

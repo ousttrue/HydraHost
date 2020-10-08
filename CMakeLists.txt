@@ -14,5 +14,6 @@ set(IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR}/_external/imgui)
 
 subdirs(
     imgui
+    usd
     HydraHost
 )

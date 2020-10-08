@@ -5,3 +5,4 @@ hydra viewer sample
 
 * [ ] cursor feedback from imgui
 * [ ] restore window state
+* [ ] logger

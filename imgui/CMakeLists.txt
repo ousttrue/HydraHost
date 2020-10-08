@@ -11,12 +11,8 @@ target_include_directories(${TARGET_NAME}
 PUBLIC
     ${IMGUI_DIR}
     ${IMGUI_DIR}/examples
-    $<$<CONFIG:DEBUG>:${BUILD_DIR}/debug/include>
-    $<$<CONFIG:RELEASE>:${BUILD_DIR}/release/include>
 )
 target_link_libraries(${TARGET_NAME}
 PUBLIC
-    OpenGL32
-    $<$<CONFIG:DEBUG>:${BUILD_DIR}/debug/lib/glew32.lib>
-    $<$<CONFIG:RELEASE>:${BUILD_DIR}/release/lib/glew32.lib>
+    usd
 )

@@ -2,6 +2,7 @@
 #include <gl/glew.h>
 #include <GL/GL.h>
 #include "GL/wglext.h"
+#include <iostream>
 
 ///
 /// OpenGLContext
@@ -113,6 +114,10 @@ bool OpenGLContext::Initialize(HWND hwnd)
         return false;
     }
 
+    std::cout << glGetString(GL_VENDOR) << "\n";
+    std::cout << glGetString(GL_RENDERER) << "\n";
+    std::cout << glGetString(GL_VERSION) << "\n";
+
     return true;
 }
 
@@ -122,6 +127,7 @@ void OpenGLContext::Begin(int width, int height)
     glViewport(0, 0, width, height);
     glClearColor(0.2f, 0.2f, 0.6f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
 }
 
 void OpenGLContext::End()
