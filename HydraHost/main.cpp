@@ -10,6 +10,8 @@
 #include <pxr/usd/usd/prim.h>
 #include <pxr/usd/sdf/path.h>
 #include <pxr/usdImaging/usdImagingGL/engine.h>
+#include <pxr/usdImaging/usdImagingGL/renderParams.h>
+#include <pxr/imaging/glf/simpleLightingContext.h>
 
 class Camera
 {
@@ -45,14 +47,14 @@ public:
             {
                 auto t = std::tan(_fovDegree / 180 * M_PI);
                 auto l = state.Diagonal();
-                _translate[0] -= (dx/l * _translate[2] * t);
-                _translate[1] += (dy/l * _translate[2] * t);
+                _translate[0] -= (dx / l * _translate[2] * t);
+                _translate[1] += (dy / l * _translate[2] * t);
             }
-            if(state.Wheel<0)
+            if (state.Wheel < 0)
             {
                 _translate[2] *= 1.1f;
             }
-            else if(state.Wheel>0)
+            else if (state.Wheel > 0)
             {
                 _translate[2] *= 0.9f;
             }
@@ -117,6 +119,26 @@ int main(int argc, char **argv)
             pxr::SdfPathVector excludedPaths;
             usdEngine = std::make_shared<pxr::UsdImagingGLEngine>(stage->GetPseudoRoot().GetPath(), excludedPaths);
         }
+        auto lightingContext = pxr::GlfSimpleLightingContext::New();
+        {
+            {
+                pxr::GlfSimpleLight light;
+                light.SetPosition(pxr::GfVec4f(0, -.5, .5, 0));
+                light.SetDiffuse(pxr::GfVec4f(1, 1, 1, 1));
+                light.SetAmbient(pxr::GfVec4f(0, 0, 0, 1));
+                light.SetSpecular(pxr::GfVec4f(1, 1, 1, 1));
+                pxr::GlfSimpleLightVector lights;
+                lights.push_back(light);
+                lightingContext->SetLights(lights);
+            }
+            pxr::GlfSimpleMaterial material;
+            material.SetAmbient(pxr::GfVec4f(0.2, 0.2, 0.2, 1.0));
+            material.SetDiffuse(pxr::GfVec4f(0.8, 0.8, 0.8, 1.0));
+            material.SetSpecular(pxr::GfVec4f(0, 0, 0, 1));
+            material.SetShininess(0.0001f);
+            lightingContext->SetMaterial(material);
+            lightingContext->SetSceneAmbient(pxr::GfVec4f(0.2, 0.2, 0.2, 1.0));
+        }
 
         // main loop
         WindowState state;
@@ -140,8 +162,18 @@ int main(int argc, char **argv)
             {
                 pxr::GfVec4d viewport(0, 0, state.Width, state.Height);
                 usdEngine->SetRenderViewport(viewport);
-
+                usdEngine->SetLightingState(lightingContext);
                 pxr::UsdImagingGLRenderParams params;
+                params.drawMode = pxr::UsdImagingGLDrawMode::DRAW_GEOM_SMOOTH;
+                params.enableLighting = true;
+                params.enableIdRender = false;
+                params.complexity = 1.0f;
+                params.cullStyle = pxr::UsdImagingGLCullStyle::CULL_STYLE_BACK;
+                params.showGuides = true;
+                params.showRender = true;
+                params.showProxy = false;
+                params.clearColor = {1, 1, 1, 1};
+
                 for (; true;)
                 {
                     usdEngine->Render(stage->GetPseudoRoot(), params);
