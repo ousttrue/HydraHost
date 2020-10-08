@@ -1,11 +1,7 @@
 #include "Win32Window.h"
-#include "OpenGLContext.h"
-#include "Gui.h"
 #include <Windows.h>
 #include <Windowsx.h>
 #include <assert.h>
-#include <thread>
-#include <chrono>
 
 ///
 /// Win32WindowImpl
@@ -21,6 +17,7 @@ public:
     bool _mouseLeft = false;
     bool _mouseRight = false;
     bool _mouseMiddle = false;
+    int _retCode = 0;
 
     static LRESULT CALLBACK WindowProc(
         _In_ HWND hwnd,
@@ -98,6 +95,11 @@ Win32Window::~Win32Window()
     delete _impl;
 }
 
+HWND Win32Window::GetHandle() const
+{
+    return _impl->_hwnd;
+}
+
 std::shared_ptr<Win32Window> Win32Window::Create(std::string_view title, int width, int height)
 {
     auto hInstance = GetModuleHandle(NULL);
@@ -134,46 +136,30 @@ std::shared_ptr<Win32Window> Win32Window::Create(std::string_view title, int wid
     return std::shared_ptr<Win32Window>(new Win32Window(impl));
 }
 
-int Win32Window::MainLoop()
+bool Win32Window::ProcessEvent(WindowState *state, int *exitCode)
 {
-    OpenGLContext opengl;
-    if (!opengl.Initialize(_impl->_hwnd))
-    {
-        return 2;
-    }
-
-    Gui gui(_impl->_hwnd);
-
     MSG msg;
-    while (true)
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
     {
-        // process event
-        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        if (msg.message == WM_QUIT)
         {
-            if (msg.message == WM_QUIT)
-            {
-                return (int)msg.wParam;
-            }
-            DispatchMessage(&msg);
+            if (exitCode)
+                *exitCode = (int)msg.wParam;
+            return false;
         }
-
-        // imgui
-        WindowState state;
-        state.MouseX = _impl->_xPos;
-        state.MouseY = _impl->_yPos;
-        state.MouseLeft = _impl->_mouseLeft;
-        state.MouseRight = _impl->_mouseRight;
-        state.MouseMiddle = _impl->_mouseMiddle;
-
-        // rendering
-        opengl.Begin(_impl->_width, _impl->_height);
-        gui.Render(state);
-        opengl.End();
-
-        // keep FPS
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        DispatchMessage(&msg);
     }
 
-    // not reach here
-    return -1;
+    if (state)
+    {
+        state->Width = _impl->_width;
+        state->Height = _impl->_height;
+        state->MouseX = _impl->_xPos;
+        state->MouseY = _impl->_yPos;
+        state->MouseLeft = _impl->_mouseLeft;
+        state->MouseRight = _impl->_mouseRight;
+        state->MouseMiddle = _impl->_mouseMiddle;
+    }
+
+    return true;
 }

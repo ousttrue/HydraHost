@@ -1,12 +1,6 @@
 #pragma
 #include <Windows.h>
-
-struct WindowState
-{
-    int MouseX;
-    int MouseY;
-    unsigned char MouseLeft : 1, MouseRight : 1, MouseMiddle : 1;
-};
+#include "WindowState.h"
 
 class Gui
 {
